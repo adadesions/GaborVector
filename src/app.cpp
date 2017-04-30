@@ -82,9 +82,6 @@ Point searchMaxBright(Mat &p_src, vector<Point> p_store)
         maxValue = sum;
         maxPoint = target;
       }
-      // circle(disSrc, target, 1, Scalar(255,100,255), -1);
-      // imshow("Debug", disSrc);
-      // // waitKey(1);
     }
     return maxPoint;
 }
@@ -230,7 +227,6 @@ vector< vector<Point> > generatePointsStore(Mat &src)
 
   for(int i=0; i<=315; i+=45)
   {
-      cout << i << endl;
       action = getLinePointSet(src, to_string(i));
       store.push_back(action);
   }
@@ -253,6 +249,7 @@ bool isContain(Point p_point, vector<Point> p_store)
 
 int main()
 {
+  // Read Images
   Mat src = imread("./data/brain1.jpg");
   Mat dst = imread("./data/brain2.jpg");
   if(src.data == NULL || dst.data == NULL)
@@ -261,33 +258,51 @@ int main()
     return -1;
   }
 
-  // Create Points Store for each lines
+  // Create Points SrcStore for each lines
   // 0 = '0', 1 = '45', 2 = '90' ... 7 = '315'
-  const vector< vector<Point> > Store = generatePointsStore(src);
-  Mat gaborResult;
+  const vector< vector<Point> > SrcStore = generatePointsStore(src);
+  const vector< vector<Point> > DstStore = generatePointsStore(dst);
+
+
+  Mat srcGabor, dstGabor;
   int offsetX = 0;
   int offsetY = 0;
   int count = 1;
+  int maxDegree = 360;
+  int stepDegree = 45;
+  vector< vector<Point> > srcCtrlPoint(maxDegree/stepDegree);
+  vector< vector<Point> > dstCtrlPoint(maxDegree/stepDegree);
 
-  for(int thata = 0; thata < 180; thata += 30)
+  for(int thata = 0; thata < maxDegree; thata += stepDegree)
   {
     if( count%4 == 0)
     {
       offsetX = 0;
       offsetY += 300;
     }
-    renderGabor(src, gaborResult, thata);
+    renderGabor(src, srcGabor, thata);
+    renderGabor(dst, dstGabor, thata);
 
-    for(int i=0; i<Store.size(); i++)
+    for(int i=0; i<SrcStore.size(); i++)
     {
-      Point markPoint = searchMaxBright(gaborResult, Store[i]);
-      circle(gaborResult, markPoint, 5, Scalar(0,0,255), -1);
+      Point srcMarkPoint = searchMaxBright(srcGabor, SrcStore[i]);
+      Point dstMarkPoint = searchMaxBright(dstGabor, DstStore[i]);
+      srcCtrlPoint[i].push_back(srcMarkPoint);
+      dstCtrlPoint[i].push_back(dstMarkPoint);
+      circle(srcGabor, srcMarkPoint, 5, Scalar(0,0,255), -1);
+      circle(dstGabor, dstMarkPoint, 5, Scalar(0,0,255), -1);
     }
 
-    const string windowNamed = "Gabor Result thata = " + to_string(thata);
-    namedWindow(windowNamed, 0);
-    moveWindow(windowNamed, offsetX, offsetY);
-    imshow(windowNamed, gaborResult);
+    const string srcWindowNamed = "srcGabor Result thata = " + to_string(thata);
+    namedWindow(srcWindowNamed, 0);
+    moveWindow(srcWindowNamed, offsetX, offsetY);
+    imshow(srcWindowNamed, srcGabor);
+
+    const string dstWindowNamed = "dstGabor Result thata = " + to_string(thata);
+    namedWindow(dstWindowNamed, 0);
+    moveWindow(dstWindowNamed, offsetX, offsetY);
+    imshow(dstWindowNamed, dstGabor);
+
     offsetX += src.cols/1.5;
     count++;
   }
