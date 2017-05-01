@@ -66,11 +66,22 @@ Point searchMaxBright(Mat &p_src, vector<Point> p_store)
     int sum = 0;
     int maxValue = -1;
     int cellRange = 1;
+    int shift = 360;
     Point maxPoint;
+    Point center(disSrc.cols, disSrc.rows);
+    int boundingRight = center.x + shift;
+    int boundingLeft = center.x - shift;
+    int boundingUpper = center.y - shift;
+    int boundingLower = center.y + shift;
 
     for(int i = 0; i < p_store.size(); i+=1)
     {
       Point target = p_store[i];
+      bool isInBoundary = ( boundingLeft < target.x && target.x < boundingRight ) && ( boundingUpper < target.y && target.y < boundingLower  );
+      if( isInBoundary )
+      {
+        continue;
+      }
       Vec3b px1 = disSrc.at<Vec3b>(target.y, target.x-cellRange);
       Vec3b px2 = disSrc.at<Vec3b>(target.y-cellRange, target.x);
       Vec3b px3 = disSrc.at<Vec3b>(target.y+cellRange, target.x);
@@ -247,9 +258,59 @@ bool isContain(Point p_point, vector<Point> p_store)
   return false;
 }
 
+double norm(Point src, Point dst)
+{
+  Point diff = dst - src;
+  return cv::sqrt(diff.x*diff.x + diff.y*diff.y);
+
+}
+
+vector<Point> minDistance(vector<Point> src, vector<Point> dst)
+{
+  Point p1, p2;
+  vector<Point> minVector(2);
+  double curMin = 5000;
+
+  for(int i=0; i<src.size(); i++)
+  {
+    for(int j=0; j<src.size(); j++)
+    {
+      p1 = src[i];
+      p2 = dst[j];
+      double distance = norm(p1, p2);
+
+      if( distance < curMin)
+      {
+        // cout << "Set new curMin!!" << endl;
+        curMin = distance;
+        minVector[0] = p1;
+        minVector[1] = p2;
+      }
+      // cout << "p1 : " << p1;
+      // cout << " ,p2 : " << p2 << " ";
+      // cout << "Distance : " << distance << endl;
+    }
+  }
+
+  return minVector;
+}
+
+vector< vector<Point> > getFinalCtrlPoints(vector< vector<Point> > src, vector< vector<Point> > dst)
+{
+  vector< vector<Point> > ctrlPoints(2);
+  for(int i=0; i<src.size(); i++)
+  {
+    vector<Point> min = minDistance(src[i], dst[i]);
+    ctrlPoints[0].push_back(min[0]);
+    ctrlPoints[1].push_back(min[1]);
+  }
+
+  return ctrlPoints;
+}
+
 int main()
 {
-  // Read Images
+// Read Images
   Mat src = imread("./data/brain1.jpg");
   Mat dst = imread("./data/brain2.jpg");
   if(src.data == NULL || dst.data == NULL)
@@ -258,11 +319,10 @@ int main()
     return -1;
   }
 
-  // Create Points SrcStore for each lines
-  // 0 = '0', 1 = '45', 2 = '90' ... 7 = '315'
+// Create Points Store for each lines
+// 0 = '0', 1 = '45', 2 = '90' ... 7 = '315'
   const vector< vector<Point> > SrcStore = generatePointsStore(src);
   const vector< vector<Point> > DstStore = generatePointsStore(dst);
-
 
   Mat srcGabor, dstGabor;
   int offsetX = 0;
@@ -293,6 +353,7 @@ int main()
       circle(dstGabor, dstMarkPoint, 5, Scalar(0,0,255), -1);
     }
 
+// Display section
     const string srcWindowNamed = "srcGabor Result thata = " + to_string(thata);
     namedWindow(srcWindowNamed, 0);
     moveWindow(srcWindowNamed, offsetX, offsetY);
@@ -306,6 +367,37 @@ int main()
     offsetX += src.cols/1.5;
     count++;
   }
+
+// Got Final CtrlPoints
+  vector< vector<Point> > ctrlPoints = getFinalCtrlPoints(srcCtrlPoint, dstCtrlPoint);
+
+	Mat h = findHomography(ctrlPoints[0], ctrlPoints[1]);
+	Mat output;
+	double alpha, beta;
+	alpha = 0.5;
+	beta = 1 - alpha;
+	warpPerspective(src, output, h, dst.size());
+
+	namedWindow("Output", 0);
+	imshow("Output", output);
+
+	addWeighted(dst, alpha,	output, beta, 10.0, output);
+
+  for(int i=0; i<ctrlPoints[0].size(); i++)
+  {
+    vector<Point> cSrc = ctrlPoints[0];
+    vector<Point> cDst = ctrlPoints[1];
+    circle(output, cSrc[i], 2, Scalar(0,0,255), -1);
+    circle(output, cDst[i], 2, Scalar(0,255,0), -1);
+  }
+
+  namedWindow("Src", 0);
+  namedWindow("Dst", 0);
+  imshow("Src", src);
+  imshow("Dst", dst);
+
+	namedWindow("Merged", 0);
+	imshow("Merged", output );
 
   waitKey(0);
   return 0;
