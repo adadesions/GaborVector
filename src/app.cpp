@@ -188,46 +188,45 @@ vector<Point> getLinePointSet(Mat &src, string thata)
     return store;
   }
 
-int iThata = stoi(thata);
-if( iThata < 90 || iThata >= 270)
-{
-// Right Loop
-  for(int x = x_start; x <= x_end; x++)
+  int iThata = stoi(thata);
+  if( iThata < 90 || iThata >= 270)
   {
-    Point action;
-    if( iThata == 270)
+  // Right Loop
+    for(int x = x_start; x <= x_end; x++)
     {
-      action.x = cols/2;
-      action.y = x;
+      Point action;
+      if( iThata == 270)
+      {
+        action.x = cols/2;
+        action.y = x;
+      }
+      else
+      {
+        action.x = x;
+        action.y = getLinePointY(p1, p2, x);
+      }
+      store.push_back(action);
     }
-    else
-    {
-      action.x = x;
-      action.y = getLinePointY(p1, p2, x);
-    }
-    store.push_back(action);
   }
-}
-else
-{
-// Left Loop
-  for(int x = x_start; x >= x_end; x--)
+  else
   {
-    Point action;
-    if( iThata == 90 )
+  // Left Loop
+    for(int x = x_start; x >= x_end; x--)
     {
-      action.x = cols/2;
-      action.y = x;
+      Point action;
+      if( iThata == 90 )
+      {
+        action.x = cols/2;
+        action.y = x;
+      }
+      else
+      {
+        action.x = x;
+        action.y = getLinePointY(p1, p2, x);
+      }
+      store.push_back(action);
     }
-    else
-    {
-      action.x = x;
-      action.y = getLinePointY(p1, p2, x);
-    }
-    store.push_back(action);
   }
-
-}
   return store;
 }
 
@@ -363,6 +362,7 @@ int main()
     namedWindow(dstWindowNamed, 0);
     moveWindow(dstWindowNamed, offsetX, offsetY);
     imshow(dstWindowNamed, dstGabor);
+// End Display Section
 
     offsetX += src.cols/1.5;
     count++;
